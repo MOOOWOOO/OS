@@ -1,7 +1,11 @@
 ; hello-os
 ; TAB=4
 
+	ORG		0X7C00			; 指明程序的装载地址
 ; 以下这段是标准 FAT12 格式软盘专用的代码
+	JMP		entry
+	DB		0X90
+
 	DB		0XEB, 0X4E, 0X90
 	DB		"HELLOIPL"		; 启动扇区名称，可以是任意字符串（8 字节）
 	DW		512				; 每个扇区（sector）的大小（必须为 512 字节）
@@ -22,18 +26,35 @@
 	DB		"FAT12   "		; 磁盘格式名称（8 字节），空格为3个，必须补满否则报错
 	RESB	18 			; 空出 18 字节
 ; 程序主体
-	DB		0XB8, 0X00, 0X00, 0X8E, 0XD0, 0XBC, 0X00, 0X7C
-	DB		0X8E, 0XD8, 0X8E, 0XC0, 0XBE, 0X74, 0X7C, 0X8A
-	DB		0X04, 0X83, 0XC6, 0X01, 0X3C, 0X00, 0X74, 0X09
-	DB		0XB4, 0X0E, 0XBB, 0X0F, 0X00, 0XCD, 0X10, 0XEB
-	DB		0XEE, 0XF4, 0XEB, 0XFD
+entry:
+		MOV		AX,0			; 初始化寄存器
+		MOV		SS,AX
+		MOV		SP,0X7C00
+		MOV		DS,AX
+		MOV		ES,AX
+
+		MOV		SI,msg
+putloop:
+		MOV		AL,[SI]
+		ADD		SI,1			; SI + 1
+		CMP		AL,0
+		JE		fin
+		MOV		AH,0X0E			; 显示一个文字
+		MOV		BX,15			; 指定字符颜色
+		INT		0X10			; 调用显卡 BIOS
+		JMP		putloop
+fin:
+		HLT						; 让 CPU 停止，等待指令
+		JMP		fin				; 无限循环
+
+msg:
 ; 信息显示部分
 	DB		0X0A, 0X0A		; 2个 换行
 	DB		"hello, world"	; 打印到屏幕上的内容，可任意修改
 	DB		0X0A			; 换行
 	DB		0
 
-	RESB	0X1FE-$		; 填写 0X00，直到 0X001FE
+	RESB	0X7DFE-$		; 填写 0X00，直到 0X001FE
 	DB		0X55, 0XAA
 ; 以下是启动区以外部分的输出
 	DB		0XF0, 0XFF, 0XFF, 0X00, 0X00, 0X00, 0X00, 0X00
