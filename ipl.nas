@@ -6,7 +6,7 @@
 	JMP		entry
 	DB		0X90
 
-	DB		0XEB, 0X4E, 0X90
+;	DB		0XEB, 0X4E, 0X90; 在 Day 2 的 Makefile 中，如果忘记去掉这句话，会一直报错Error37
 	DB		"HELLOIPL"		; 启动扇区名称，可以是任意字符串（8 字节）
 	DW		512				; 每个扇区（sector）的大小（必须为 512 字节）
 	DB		1				; 簇（cluster）的大小（必须为 1个 扇区）
