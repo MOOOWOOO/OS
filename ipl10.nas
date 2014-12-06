@@ -1,6 +1,6 @@
-; hello-os
+; haribote-os
 ; TAB=4
-CYLS	EQU		10		; 指定 CYLS 的值为 10
+	CYLS	EQU		10		; 指定 CYLS 的值为 10
 	ORG		0X7C00			; 指明程序的装载地址
 ; 以下这段是标准 FAT12 格式软盘专用的代码
 	JMP		entry
@@ -68,6 +68,9 @@ next:
 		ADD 	CH, 1
 		CMP		CH, CYLS
 		JB 		readloop		; 如果 CH < CYLS，则跳转到 readloop
+; 以下两句在书中未提到，但在光盘代码中有出现，如果没写，会加载失败报错 load error
+		MOV		[0x0ff0],CH		; 将CYLS的值写到内存地址0x0ff0中。
+		JMP		0xc200
 error:
 		MOV		SI, msg
 putloop:
