@@ -37,13 +37,29 @@ entry:
 		MOV		CH, 0 			; 柱面 0
 		MOV		DH, 0 			; 磁头 0
 		MOV		CL, 2 			; 扇区 2
-
+readloop:
+		MOV		SI, 0 			; 记录失败次数的寄存器
+retry:
 		MOV		AH, 0X02 		; AH = 0X02：读盘
 		MOV		AL, 1 			; 1个 扇区
 		MOV		BX, 0
-		MOV		DL, 0X00 		; A驱动器
-		INT		0X13 			; 调用磁盘BIOS
-		JC		error
+		MOV		DL, 0X00 		; A 驱动器
+		INT		0X13 			; 调用磁盘 BIOS
+		JNC		fin				; 没出错的话跳转到 fin
+		ADD		SI, 1 			; 出错则 SI + 1
+		CMP		SI, 5 			; 比较出错次数
+		JAE		error			; SI >= 5，跳转到 error
+		MOV		AH, 0X00
+		MOV		DL, 0X00 		; A 驱动器
+		INT		0X13			; 重置驱动器
+		JMP		retry
+next:
+		MOV		AX, ES 			; 把内存地址后移 0X200
+		ADD		AX, 0X0020
+		MOV		ES, AX			; 因为没有ADD ES, 0X020 指令，所以迂回一下
+		ADD		CL, 1 			; CL + 1
+		CMP		CL, 18 			; 比较，是否到达 第18个 扇区 
+		JBE		readloop		; 未到 第18个 扇区，则继续循环
 error:
 		MOV		SI,msg
 putloop:
