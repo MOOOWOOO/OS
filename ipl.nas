@@ -31,8 +31,20 @@ entry:
 		MOV		SS,AX
 		MOV		SP,0X7C00
 		MOV		DS,AX
-		MOV		ES,AX
 
+ 		MOV		AX, 0X0820
+		MOV		ES,AX
+		MOV		CH, 0 			; 柱面 0
+		MOV		DH, 0 			; 磁头 0
+		MOV		CL, 2 			; 扇区 2
+
+		MOV		AH, 0X02 		; AH = 0X02：读盘
+		MOV		AL, 1 			; 1个 扇区
+		MOV		BX, 0
+		MOV		DL, 0X00 		; A驱动器
+		INT		0X13 			; 调用磁盘BIOS
+		JC		error
+error:
 		MOV		SI,msg
 putloop:
 		MOV		AL,[SI]

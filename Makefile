@@ -1,10 +1,13 @@
-TOOLPATH = D:/Projects/others/tolset/z_tools/
-MAKE	 = $(TOOLPATH)make.exe
-MAKER	 = $(MAKE) -r
+TOOLPATH = ../tolset/z_tools/
+MAKE	 = $(TOOLPATH)make.exe -r
 NASK 	 = $(TOOLPATH)nask.exe
 EDIMG	 = $(TOOLPATH)edimg.exe
+IMGTOL   = $(TOOLPATH)imgtol.com
 COPY	 = copy
 DEL		 = del
+
+default :
+	$(MAKE) img
 
 ipl.bin : ipl.nas Makefile
 	$(NASK) ipl.nas ipl.bin ipl.lst
@@ -14,16 +17,24 @@ helloos.img : ipl.bin Makefile
 		wbinimg src:ipl.bin len:512 from:0 to:0 imgout:helloos.img
 
 img :
-	$(MAKER) helloos.img
+	$(MAKE) helloos.img
 
 asm :
-	$(MAKER) ipl.bin
+	$(MAKE) ipl.bin
 
 run :
-	$(MAKER) img
-	$(COPY) helloos.img D:\Projects\others\tolset\z_tools\qemu\fdimage0.bin
+	$(MAKE) img
+	$(COPY) helloos.img ..\tolset\z_tools\qemu\fdimage0.bin
 	$(MAKE) -C $(TOOLPATH)qemu
 
 install :
 	$(MAKE) img
-	$(TOOLPATH)imgtol.com w a: helloos.img
+	$(IMGTOL) w a: helloos.img
+
+clean :
+	-$(DEL) ipl.bin
+	-$(DEL) ipl.lst
+
+src_only :
+	$(MAKE) clean
+	-$(DEL) helloos.img
