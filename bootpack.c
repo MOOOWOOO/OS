@@ -7,35 +7,48 @@ void io_store_eflags(int eflags);
 void init_palette(void);
 void set_palette(int start, int end, unsigned char *rgb);
 
+#define COL8_000000		0
+#define COL8_FF0000		1
+#define COL8_00FF00		2
+#define COL8_FFFF00		3
+#define COL8_0000FF		4
+#define COL8_FF00FF		5
+#define COL8_00FFFF		6
+#define COL8_FFFFFF		7
+#define COL8_C6C6C6		8
+#define COL8_840000		9
+#define COL8_008400		10
+#define COL8_848400		11
+#define COL8_000084		12
+#define COL8_840084		13
+#define COL8_008484		14
+#define COL8_848484		15
+
 void HariMain(void)
 {
-	int i;		// i 是 32位 整数
 	char *p;	// BYTE型 地址
 	
 	init_palette();	// 设定调色板
 
-	for (i = 0xa0000; i <= 0xaffff; i++) {
-		// 替代原本的 write_mem8 函数
-		p = (char *) i;
-		*p = i & 0x0f;
-	}
-	/*
-	 * 另一种写法-1：
-	 * p = (char *) 0xa0000;
-	 * for (i = 0; i <= 0xffff; i++) {
-	 *     *(p + i) = i & 0x0f;
-	 * }
-	 * -------------------------------------
-	 * 另一种写法-2：
-	 * p = {char *} 0xa0000;
-	 * for (i = 0; i <= 0xffff; i++) {
-	 *     p[i] = i & 0x0f;
-	 * }
-	 */
+	p = (char *) 0xa0000;
+
+	boxfill8(p, 320, COL8_FF0000, 20, 20, 120, 120);
+	boxfill8(p, 320, COL8_00FF00, 70, 50, 170, 150);
+	boxfill8(p, 320, COL8_0000FF, 120, 80, 220, 180);
 
 	while (1) {
 		io_hlt();
 	}
+}
+
+void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1) {
+	int x, y;
+	for (y = y0; y <= y1; y++) {
+		for (x = x0; x<= x1; x++) {
+			vram[y * xsize + x] = c;
+		}
+	}
+	return ;
 }
 
 void init_palette(void) {
