@@ -25,21 +25,26 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 #define COL8_008484		14
 #define COL8_848484		15
 
+struct BOOTINFO
+{
+	char cyls, leds, vmode, reserve;
+	short scrnx, scrny;
+	char *vram;
+};
+
 void HariMain(void)
 {
 	char *vram;	// BYTE型 地址
 	int xsize, ysize;
-	short *binfo_srcnx, *binfo_scrny;
+	short *binfo_scrnx, *binfo_scrny;
 	int *binfo_vram;
+	struct BOOTINFO *binfo;
 
 	init_palette();	// 设定调色板
-	binfo_srcnx = (short *) 0x0ff4;		// asmhead.nas 中 SCRNX
-	binfo_scrny = (short *) 0x0ff6;		// asmhead.nas 中 SCRNY
-	binfo_vram = (int *) 0x0ff8;		// asmhead.nas 中 VRAM
-
-	vram = (char *) *binfo_vram;
-	xsize = *binfo_srcnx;
-	ysize = *binfo_scrny;
+	binfo = (struct BOOTINFO *) 0x0ff0;	// asmhead.nas 中 BOOT_INFO 部分
+	xsize = (*binfo).scrnx;		// asmhead.nas 中 SCRNX
+	ysize = (*binfo).scrny;		// asmhead.nas 中 SCRNY
+	vram = (*binfo).vram;		// asmhead.nas 中 VRAM
 
 	// 底色
 	boxfill8(vram, xsize, COL8_008484,  0,         0,          xsize -  1, ysize - 29);
