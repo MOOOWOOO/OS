@@ -40,6 +40,26 @@ struct BOOTINFO
 	char *vram;
 };
 
+struct SEGMENT_DESCRIPTOR 
+{
+	short limit_low, base_low;
+	char base_mid, access_right;
+	char limit_high, base_high;
+};
+
+struct GATE_DESCRIPTOR
+{
+	short offset_low, selector;
+	char dw_count, access_right;
+	short offset_high;
+};
+
+void init_gdtidt(void);
+void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
+void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
+void load_gdtr(int limit, int addr);
+void load_idtr(int limit, int addr);
+
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) 0x0ff0;	// asmhead.nas 中 BOOT_INFO 部分
@@ -52,7 +72,7 @@ void HariMain(void)
 	my = (binfo->scrny - 28 - 16) / 2;
 	init_mouse_cursor8(mcursor, COL8_008484);
 	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
-	
+
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
 
@@ -61,6 +81,16 @@ void HariMain(void)
 	}
 }
 
+/*
+ * Params:
+ * unsigned char*	: 
+ * int 				: 
+ * unsigned char	: 
+ * int 				: 
+ * int 				: 
+ * int 				: 
+ * int 				: 
+ */
 void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1) {
 	int x, y;
 	for (y = y0; y <= y1; y++) {
@@ -94,6 +124,12 @@ void init_palette(void) {
 	return ;
 }
 
+/*
+ * Params:
+ * int 				: (start)
+ * int 				: (end)
+ * unsigned char*	: 
+ */
 void set_palette(int start, int end, unsigned char *rgb) {
 	int i, eflags;
 	eflags = io_load_eflags();	// 记录中断许可标志的值
@@ -109,6 +145,12 @@ void set_palette(int start, int end, unsigned char *rgb) {
 	return ;
 }
 
+/*
+ * Params:
+ * char*	: 
+ * int 		: 屏幕宽度(xsize)
+ * int 		: 屏幕高度(ysize)
+ */
 void init_screen(char *vram, int xsize, int ysize) {
 	// 底色
 	boxfill8(vram, xsize, COL8_008484,  0,         0,          xsize -  1, ysize - 29);
@@ -134,6 +176,15 @@ void init_screen(char *vram, int xsize, int ysize) {
 	return ;
 }
 
+/*
+ * Params:
+ * char*	: 
+ * int 		: 屏幕宽度(xsize)
+ * int 		: 位置横坐标(x)
+ * int 		: 位置纵坐标(y)
+ * char		: 颜色(color)
+ * char*	: 字符内存地址(*font)
+ */
 void putfont8(char *vram, int xsize, int x, int y, char c, char *font) {
 	int i;
 	char d, *p; // data
@@ -151,6 +202,15 @@ void putfont8(char *vram, int xsize, int x, int y, char c, char *font) {
 	}
 }
 
+/*
+ * Params:
+ * char*			: 
+ * int 				: 屏幕宽度(xsize)
+ * int 				: 位置横坐标(x)
+ * int 				: 位置纵坐标(y)
+ * char				: 颜色(color)
+ * unsigned char*	: 字符串起始内存地址(*s)
+ */
 void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s)
 {
 	extern char hankaku[4096];
@@ -161,6 +221,11 @@ void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s
 	return ;
 }
 
+/*
+ * Params:
+ * char*	: 
+ * char		: 
+ */
 void init_mouse_cursor8(char *mouse, char bc)
 /* 准备鼠标指针 [16 * 16] */
 {
@@ -199,6 +264,18 @@ void init_mouse_cursor8(char *mouse, char bc)
 	}
 	return;
 }
+
+/*
+ * Params:
+ * char*	: 
+ * int 		: 
+ * int 		:
+ * int 		: 
+ * int 		: 
+ * int 		: 
+ * char*	:
+ * int 		: 
+ */
 void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize)
 {
 	int x, y;
@@ -207,5 +284,67 @@ void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py
 			vram[(py0 + y) * vxsize + (px0 + x)] = buf[y * bxsize + x];
 		}
 	}
+	return;
+}
+
+void init_gdtidt(void)
+{
+	struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) 0x00270000;
+	struct GATE_DESCRIPTOR    *idt = (struct GATE_DESCRIPTOR    *) 0x0026f800;
+	int i;
+
+	/* GDT初始化，8192 为段的最大号数，因为CPU的设计原因，段寄存器的低3位不能使用 */
+	for (i = 0; i < 8192; i++) {
+		set_segmdesc(gdt + i, 0, 0, 0);
+	}
+	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);	// 段号 1，上限 4GB，起始位置 0，属性 0x4092，这个段是 CPU 所能管理的段本身。
+	set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);	// 段号 2，上限 512KB，地址 0x00280000，为 bootpack.hrb 准备的。
+	load_gdtr(0xffff, 0x00270000);
+
+	/* IDT初始化 */
+	for (i = 0; i < 256; i++) {
+		set_gatedesc(idt + i, 0, 0, 0);
+	}
+	load_idtr(0x7ff, 0x0026f800);
+
+	return;
+}
+
+/*
+ * Param:
+ * struct SEGMENT_DESCRIPTOR*	: 段号(segment descriptor)
+ * unsigned int 				: 上限(limit)
+ * int 							: 基址(base)
+ * int 							: 属性(attribute)
+ */
+void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar)
+{
+	if (limit > 0xfffff) {
+		ar |= 0x8000; /* G_bit = 1 */
+		limit /= 0x1000;
+	}
+	sd->limit_low    = limit & 0xffff;
+	sd->base_low     = base & 0xffff;
+	sd->base_mid     = (base >> 16) & 0xff;
+	sd->access_right = ar & 0xff;
+	sd->limit_high   = ((limit >> 16) & 0x0f) | ((ar >> 8) & 0xf0);
+	sd->base_high    = (base >> 24) & 0xff;
+	return;
+}
+
+/*
+ * Params:
+ * struct GATE_DESCRIPTOR*	: 
+ * int 						: 偏移量(offset)
+ * int 						: 
+ * int 						: 属性(attribute)
+ */
+void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar)
+{
+	gd->offset_low   = offset & 0xffff;
+	gd->selector     = selector;
+	gd->dw_count     = (ar >> 8) & 0xff;
+	gd->access_right = ar & 0xff;
+	gd->offset_high  = (offset >> 16) & 0xffff;
 	return;
 }

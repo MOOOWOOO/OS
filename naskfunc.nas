@@ -7,10 +7,11 @@
 
 ; 制作目标文件的信息
 [FILE "naskfunc.nas"]						; 源文件名信息
-	GLOBAL	_io_hlt,	_io_cli,	_io_sti,	io_stihlt
-	GLOBAL	_io_in8,	_io_in16,	_io_in32
-	GLOBAL	_io_out8,	_io_out16,	_io_out32
+	GLOBAL	_io_hlt,			_io_cli,			_io_sti,	io_stihlt
+	GLOBAL	_io_in8,			_io_in16,			_io_in32
+	GLOBAL	_io_out8,			_io_out16,			_io_out32
 	GLOBAL	_io_load_eflags,	_io_store_eflags
+	GLOBAL	_load_gdtr, 		_load_idtr
 
 ; 以下是实际的函数
 [SECTION .text]								; 目标文件中写了这些之后再写程序
@@ -65,4 +66,15 @@ _io_store_eflags:
 		MOV		EAX, [ESP + 4]
 		PUSH	EAX
 		POPFD								; POP EFLAGS
+		RET
+_load_gdtr:
+		MOV		AX,[ESP+4]		; limit
+		MOV		[ESP+6],AX
+		LGDT	[ESP+6]
+		RET
+
+_load_idtr:
+		MOV		AX,[ESP+4]		; limit
+		MOV		[ESP+6],AX
+		LIDT	[ESP+6]
 		RET
