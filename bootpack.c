@@ -9,6 +9,7 @@ void HariMain(void)
 	int mx, my;
 
 	init_gdtidt();
+	init_pic();
 	init_palette();	// 设定调色板
 	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 	mx = (binfo->scrnx - 16) / 2; /* 鼠标置于屏幕中部 */

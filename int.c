@@ -1,3 +1,5 @@
+#include "bootpack.h"
+
 void init_pic(void) {
 	io_out8(PIC0_IMR, 0XFF);	// 禁止所有中断
 	io_out8(PIC1_IMR, 0XFF);	// 禁止所有中断
