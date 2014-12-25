@@ -10,6 +10,8 @@ void HariMain(void)
 
 	init_gdtidt();
 	init_pic();
+	io_sti();
+
 	init_palette();	// 设定调色板
 	init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
 	mx = (binfo->scrnx - 16) / 2; /* 鼠标置于屏幕中部 */
@@ -19,6 +21,9 @@ void HariMain(void)
 
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+
+	io_out8(PIC0_IMR, 0xf9);
+	io_out8(PIC1_IMR, 0xef);
 
 	while (1) {
 		io_hlt();
