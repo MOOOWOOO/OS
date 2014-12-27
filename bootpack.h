@@ -98,6 +98,7 @@ void inthandler2c(int *esp);
 #define PIC1_ICW4		0x00a1
 
 struct KEYBUF {
-	unsigned char data, flag;
+	unsigned char data[32];
+	unsigned int next;
 };
 /* end */
