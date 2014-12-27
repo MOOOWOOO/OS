@@ -1,4 +1,5 @@
 #include "bootpack.h"
+#include <stdio.h>
 
 void init_pic(void) {
 	io_out8(PIC0_IMR, 0XFF);	// 禁止所有中断
@@ -24,13 +25,18 @@ void init_pic(void) {
  * Params:
  * int*		:
  */
+ #define PORT_KEYDAT		0x0060
 void inthandler21(int *esp) {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	boxfill8(binfo->vram, binfo->scrnx, COL8_000000,  0, 0, 32 * 8 -  1, 15);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 21 (IRQ-1) : PS/2 Keyboard.");
-	while(1) {
-		io_hlt();
-	}
+	unsigned char data, s[4];
+	io_out8(PIC0_OCW2, 0x61);	// 通知 PIC "IRQ-01已经受理完毕"
+	data = io_in8(PORT_KEYDAT);
+
+	sprintf(s, "%02X", data);
+	boxfill8(binfo->vram, binfo->scrnx, COL8_008484,  0, 16, 15, 31);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
+
+	return;
 }
 
 void inthandler2c(int *esp) {
