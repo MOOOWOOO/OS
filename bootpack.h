@@ -97,8 +97,12 @@ void inthandler2c(int *esp);
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
 
-struct KEYBUF {
-	unsigned char data[32];
-	unsigned int next_r, next_w, len;
+struct FIFO8 {
+	unsigned char *data;
+	unsigned int next_r, next_w, size, frees, flags;		// next_r: next read; next_w: next write;
 };
+void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *data);
+int fifo8_put(struct FIFO8 *fifo, unsigned char data);
+int fifo8_get(struct FIFO8 *fifo);
+int fifo8_status(struct FIFO8 *fifo);
 /* end */

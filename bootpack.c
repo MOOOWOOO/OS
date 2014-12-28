@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include "bootpack.h"
 
-extern struct KEYBUF keybuf;
+extern struct FIFO8 keyfifo;
 
 void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;	// asmhead.nas 中 BOOT_INFO 部分
-	char s[40], mcursor[256];
+	char s[40], mcursor[256], keybuf[32];
 	int mx, my, i, j;
 
 	init_gdtidt();
@@ -27,17 +27,14 @@ void HariMain(void)
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
 
+	fifo8_init(&keyfifo, 32, keybuf);
+
 	while (1) {
 		io_cli();
-		if (keybuf.len == 0){
+		if (fifo8_status(&keyfifo) == 0){
 			io_stihlt();
 		} else {
-			i = keybuf.data[0];
-			keybuf.len--;
-			keybuf.next_r++;
-			if (keybuf.next_r == 32) {
-				keybuf.next_r = 0;
-			}
+			i = fifo8_get(&keyfifo);
 			io_sti();
 			sprintf(s, "%02X", i);
 			boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
