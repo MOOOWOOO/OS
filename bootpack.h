@@ -97,6 +97,7 @@ void inthandler2c(int *esp);
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
 
+// 键盘中断部分
 struct FIFO8 {
 	unsigned char *data;
 	unsigned int next_r, next_w, size, frees, flags;		// next_r: next read; next_w: next write;
