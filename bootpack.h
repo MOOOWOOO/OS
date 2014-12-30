@@ -109,5 +109,6 @@ int fifo8_status(struct FIFO8 *fifo);
 
 struct MOUSE_DEC {
 	unsigned char buf[3], phase;
+	int x, y, btn;
 };
 /* end */
