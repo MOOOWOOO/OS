@@ -106,4 +106,8 @@ void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *data);
 int fifo8_put(struct FIFO8 *fifo, unsigned char data);
 int fifo8_get(struct FIFO8 *fifo);
 int fifo8_status(struct FIFO8 *fifo);
+
+struct MOUSE_DEC {
+	unsigned char buf[3], phase;
+};
 /* end */

@@ -38,12 +38,34 @@ void init_keyboard(void) {
 #define KEYCMD_SENDTO_MOUSE		0xd4
 #define MOUSECMD_ENABLE			0xf4
 
-void enable_mouse(void) {
+void enable_mouse(struct MOUSE_DEC *mdec) {
 	wait_KBC_sendready();
 	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
 	wait_KBC_sendready();
 	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
+	mdec->phase = 0;	// wait for 0xfa
 	return ;		// 如果顺利，键盘控制器会返回ACK(0xfa)
+}
+
+int mouse_decode(struct MOUSE_DEC *mdec, unsigned char dat) {
+	if (mdec->phase == 0) {
+		if (dat == 0xfa) {
+			mdec->phase = 1;
+		}
+		return 0;
+	} else if (mdec->phase == 1) {
+		mdec->buf[0] = dat;
+		mdec->phase = 2;
+		return 0;
+	} else if (mdec->phase == 2) {
+		mdec->buf[1] = dat;
+		mdec->phase = 3;
+	} else if (mdec->phase == 3) {
+		mdec->buf[2] = dat;
+		mdec->phase = 1;
+		return 1;
+	}
+	return -1;
 }
 
 /**
@@ -55,8 +77,8 @@ void HariMain(void)
 {
 	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;	// asmhead.nas 中 BOOT_INFO 部分
 	char s[40], mcursor[256], keybuf[32], mousebuf[128];
-	int mx, my, i, j;
-	unsigned char mouse_dbuf[3], mouse_phase;
+	int mx, my, i;
+	struct MOUSE_DEC mdec;
 
 	init_gdtidt();
 	init_pic();
@@ -78,8 +100,7 @@ void HariMain(void)
 	sprintf(s, "(%d, %d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
 
-	enable_mouse();
-	mouse_phase = 0;
+	enable_mouse(&mdec);
 
 	while (1) {
 		io_cli();
@@ -96,21 +117,8 @@ void HariMain(void)
 				i = fifo8_get(&mousefifo);
 				io_sti();
 
-				if (mouse_phase == 0) {
-					if (i == 0xfa) {
-						mouse_phase = 1;
-					}
-				} else if (mouse_phase == 1) {
-					mouse_dbuf[0] = i;
-					mouse_phase = 2;
-				} else if (mouse_phase == 2) {
-					mouse_dbuf[1] = i;
-					mouse_phase = 3;
-				} else if (mouse_phase == 3) {
-					mouse_dbuf[2] = i;
-					mouse_phase = 1;
-				
-					sprintf(s, "%02X %02X %02X", mouse_dbuf[0], mouse_dbuf[1], mouse_dbuf[2]);
+				if (mouse_decode(&mdec, i) != 0) {
+					sprintf(s, "%02X %02X %02X", mdec.buf[0], mdec.buf[1], mdec.buf[2]);
 					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 32, 16, 32 + 8 * 8 - 1, 31);
 					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
 				}
