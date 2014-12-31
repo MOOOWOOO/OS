@@ -99,11 +99,11 @@ void HariMain(void)
 
 	init_gdtidt();
 	init_pic();
-	io_sti();
+	io_sti();		// IDT/PIC 的初始化已经完成，所以开放 CPUT 中断
 	fifo8_init(&keyfifo, 32, keybuf);
 	fifo8_init(&mousefifo, 128, mousebuf);
-	io_out8(PIC0_IMR, 0xf9);
-	io_out8(PIC1_IMR, 0xef);
+	io_out8(PIC0_IMR, 0xf9);	// 开放 PIC1 和键盘中断（11111001）
+	io_out8(PIC1_IMR, 0xef);	// 开放鼠标中断（11101111）
 
 	init_keyboard();
 

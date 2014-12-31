@@ -28,19 +28,19 @@ DSKCAC0	EQU		0x00008000		; ディスクキャッシュの場所（リアルモ�
 	INT		0X16				; KEYBOARD BIOS
 	MOV		[LEDS], AL
 
-; PICが一切の割り込みを受け付けないようにする
-;	AT互換機の仕様では、PICの初期化をするなら、
-;	こいつをCLI前にやっておかないと、たまにハングアップする
-;	PICの初期化はあとでやる
+; PIC 关闭一切中断
+;	根据 AT 兼容机的规格，如果要初始化 PIC
+;	必须在 CLI 之前进行，否则有时会挂起
+;	随后进行 PIC 的初始化
 
 		MOV		AL,0xff
 		OUT		0x21,AL
-		NOP						; OUT命令を連続させるとうまくいかない機種があるらしいので
+		NOP						; 如果连续执行 OUT 指令，有些机种会无法正常运行
 		OUT		0xa1,AL
 
-		CLI						; さらにCPUレベルでも割り込み禁止
+		CLI						; 禁止 CPU 级别的中断
 
-; CPUから1MB以上のメモリにアクセスできるように、A20GATEを設定
+; 为了让 CPU 能够访问 1MB 以上的内存空间，设定 A20GATE
 
 		CALL	waitkbdout
 		MOV		AL,0xd1
@@ -50,72 +50,73 @@ DSKCAC0	EQU		0x00008000		; ディスクキャッシュの場所（リアルモ�
 		OUT		0x60,AL
 		CALL	waitkbdout
 
-; プロテクトモード移行
+; 切换到保护模式
 
-[INSTRSET "i486p"]				; 486の命令まで使いたいという記述
+[INSTRSET "i486p"]				; 声明要使用 486 指令
 
-		LGDT	[GDTR0]			; 暫定GDTを設定
+		LGDT	[GDTR0]			; 暫定设定 GDT
 		MOV		EAX,CR0
-		AND		EAX,0x7fffffff	; bit31を0にする（ページング禁止のため）
-		OR		EAX,0x00000001	; bit0を1にする（プロテクトモード移行のため）
+		AND		EAX,0x7fffffff	; 设定 bit31 为0（为了禁止分页）
+		OR		EAX,0x00000001	; 设定 bit0 为 1（为了切换到保护模式）
 		MOV		CR0,EAX
 		JMP		pipelineflush
 pipelineflush:
-		MOV		AX,1*8			;  読み書き可能セグメント32bit
+		MOV		AX,1*8			;  可以读写的段 32bit
 		MOV		DS,AX
 		MOV		ES,AX
 		MOV		FS,AX
 		MOV		GS,AX
 		MOV		SS,AX
 
-; bootpackの転送
+; bootpack 传送
 
-		MOV		ESI,bootpack	; 転送元
-		MOV		EDI,BOTPAK		; 転送先
+		MOV		ESI,bootpack	; 转送源
+		MOV		EDI,BOTPAK		; 转送目的地
 		MOV		ECX,512*1024/4
 		CALL	memcpy
 
-; ついでにディスクデータも本来の位置へ転送
+; 磁盘数据最终转送到他本来的位置去
 
-; まずはブートセクタから
+; 首先从启动扇区开始
 
-		MOV		ESI,0x7c00		; 転送元
-		MOV		EDI,DSKCAC		; 転送先
+		MOV		ESI,0x7c00		; 转送源
+		MOV		EDI,DSKCAC		; 转送目的地
 		MOV		ECX,512/4
 		CALL	memcpy
 
-; 残り全部
+; 所有剩下的
 
-		MOV		ESI,DSKCAC0+512	; 転送元
-		MOV		EDI,DSKCAC+512	; 転送先
+		MOV		ESI,DSKCAC0+512	; 转送源
+		MOV		EDI,DSKCAC+512	; 转送目的地
 		MOV		ECX,0
 		MOV		CL,BYTE [CYLS]
-		IMUL	ECX,512*18*2/4	; シリンダ数からバイト数/4に変換
-		SUB		ECX,512/4		; IPLの分だけ差し引く
+		IMUL	ECX,512*18*2/4	; 从住面熟变为字节数/4
+		SUB		ECX,512/4		; 减去 IPL
 		CALL	memcpy
 
-; asmheadでしなければいけないことは全部し終わったので、
-;	あとはbootpackに任せる
+; 必须由 asmhead 完成的，至此全部完毕
+;	后续交由 bootpack 完成
 
-; bootpackの起動
+; bootpack 启动
 
 		MOV		EBX,BOTPAK
 		MOV		ECX,[EBX+16]
 		ADD		ECX,3			; ECX += 3;
 		SHR		ECX,2			; ECX /= 4;
-		JZ		skip			; 転送するべきものがない
-		MOV		ESI,[EBX+20]	; 転送元
+		JZ		skip			; 没有要转送的
+		MOV		ESI,[EBX+20]	; 转送源
 		ADD		ESI,EBX
-		MOV		EDI,[EBX+12]	; 転送先
+		MOV		EDI,[EBX+12]	; 转送目的地
 		CALL	memcpy
 skip:
-		MOV		ESP,[EBX+12]	; スタック初期値
+		MOV		ESP,[EBX+12]	; 栈初始值
 		JMP		DWORD 2*8:0x0000001b
 
 waitkbdout:
 		IN		 AL,0x64
 		AND		 AL,0x02
-		JNZ		waitkbdout		; ANDの結果が0でなければwaitkbdoutへ
+		IN 		 AL,0X60 		; 空读（为了清空数据接收缓冲区中的垃圾数据）
+		JNZ		waitkbdout		; AND 的结果如果不是 0，就跳到 waitkbdout
 		RET
 
 memcpy:
@@ -124,15 +125,15 @@ memcpy:
 		MOV		[EDI],EAX
 		ADD		EDI,4
 		SUB		ECX,1
-		JNZ		memcpy			; 引き算した結果が0でなければmemcpyへ
+		JNZ		memcpy			; 减法运算的结果如果不是 0，就跳转到 memcpy
 		RET
 ; memcpyはアドレスサイズプリフィクスを入れ忘れなければ、ストリング命令でも書ける
 
 		ALIGNB	16
 GDT0:
-		RESB	8				; ヌルセレクタ
-		DW		0xffff,0x0000,0x9200,0x00cf	; 読み書き可能セグメント32bit
-		DW		0xffff,0x0000,0x9a28,0x0047	; 実行可能セグメント32bit（bootpack用）
+		RESB	8				; NULL selector
+		DW		0xffff,0x0000,0x9200,0x00cf	; 可读写的段（segment）32bit
+		DW		0xffff,0x0000,0x9a28,0x0047	; 可执行的段（segment）32bit（bootpack用）
 
 		DW		0
 GDTR0:
